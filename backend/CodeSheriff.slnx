@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="CodeSheriff.API/CodeSheriff.API.csproj" />
+  <Project Path="CodeSheriff.Application/CodeSheriff.Application.csproj" />
+  <Project Path="CodeSheriff.Domain/CodeSheriff.Domain.csproj" />
+  <Project Path="CodeSheriff.Infrastructure/CodeSheriff.Infrastructure.csproj" />
+  <Project Path="CodeSheriff.Tests/CodeSheriff.Tests.csproj" />
+</Solution>
