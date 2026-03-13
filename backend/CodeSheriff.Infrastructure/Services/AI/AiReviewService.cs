@@ -95,10 +95,25 @@ internal sealed class AiReviewService : IAiReviewService
         }
     }
 
+    private static string StripMarkdownCodeFences(string text)
+    {
+        var trimmed = text.Trim();
+        if (trimmed.StartsWith("```"))
+        {
+            var firstNewline = trimmed.IndexOf('\n');
+            if (firstNewline >= 0)
+                trimmed = trimmed[(firstNewline + 1)..];
+            if (trimmed.EndsWith("```"))
+                trimmed = trimmed[..^3].TrimEnd();
+        }
+        return trimmed;
+    }
+
     private static Result<AiReviewResult> ParseAiResponse(string text)
     {
         try
         {
+            text = StripMarkdownCodeFences(text);
             var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
             var parsed = JsonSerializer.Deserialize<AiResponseDto>(text, options);
             if (parsed is null)
