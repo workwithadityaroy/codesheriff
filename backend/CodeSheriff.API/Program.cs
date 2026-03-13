@@ -16,6 +16,15 @@ try
 
     var builder = WebApplication.CreateBuilder(args);
 
+    // Sentry
+    builder.WebHost.UseSentry(o =>
+    {
+        o.Dsn = builder.Configuration["Sentry:Dsn"] ?? string.Empty;
+        o.TracesSampleRate = builder.Environment.IsDevelopment() ? 0.0 : 0.1;
+        o.Environment = builder.Environment.EnvironmentName;
+        o.SendDefaultPii = false;
+    });
+
     // Serilog
     builder.Host.UseSerilog((context, services, configuration) =>
     {
@@ -39,6 +48,7 @@ try
         .AddJwtBearer(options =>
         {
             options.Authority = clerkAuthority;
+            options.MapInboundClaims = false;
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateAudience = false,
@@ -70,14 +80,18 @@ try
             name: "postgresql",
             tags: ["db", "ready"]);
 
-    // CORS for local frontend dev
+    // CORS — origins configured per environment via Cors:AllowedOrigins
+    var allowedOrigins = (builder.Configuration["Cors:AllowedOrigins"] ?? string.Empty)
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
     builder.Services.AddCors(options =>
     {
-        options.AddPolicy("Development", policy =>
+        options.AddPolicy("Frontend", policy =>
         {
-            policy.WithOrigins("http://localhost:3000")
-                  .AllowAnyHeader()
-                  .AllowAnyMethod();
+            if (allowedOrigins.Length > 0)
+                policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod();
+            else
+                policy.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod();
         });
     });
 
@@ -102,11 +116,12 @@ try
             options.Title = "CodeSheriff API";
             options.Theme = ScalarTheme.Purple;
         });
-        app.UseCors("Development");
     }
 
+    app.UseCors("Frontend");
     app.UseAuthentication();
-    app.UseHttpsRedirection();
+    if (!app.Environment.IsDevelopment())
+        app.UseHttpsRedirection();
     app.UseAuthorization();
     app.MapControllers();
     app.MapHealthChecks("/health");

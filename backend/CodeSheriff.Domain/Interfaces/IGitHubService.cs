@@ -6,7 +6,8 @@ public interface IGitHubService
 {
     Task<Result<string>> GetPullRequestDiffAsync(
         long installationId,
-        long repoGitHubId,
+        string owner,
+        string repoName,
         int prNumber,
         CancellationToken cancellationToken = default);
 }

@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd backend && dotnet publish CodeSheriff.API/CodeSheriff.API.csproj -c Release -o /app/publish"
+
+[deploy]
+startCommand = "dotnet /app/publish/CodeSheriff.API.dll"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

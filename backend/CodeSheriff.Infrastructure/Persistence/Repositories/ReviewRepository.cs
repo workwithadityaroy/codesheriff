@@ -13,7 +13,9 @@ internal sealed class ReviewRepository : BaseRepository<Review>, IReviewReposito
         CancellationToken cancellationToken = default)
         => await DbSet
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.PullRequestId == pullRequestId, cancellationToken);
+            .Where(r => r.PullRequestId == pullRequestId)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<Review?> GetWithIssuesByIdAsync(
         Guid reviewId,
@@ -21,4 +23,13 @@ internal sealed class ReviewRepository : BaseRepository<Review>, IReviewReposito
         => await DbSet
             .Include(r => r.Issues)
             .FirstOrDefaultAsync(r => r.Id == reviewId, cancellationToken);
+
+    public async Task<Review?> GetLatestWithIssuesByPullRequestIdAsync(
+        Guid pullRequestId,
+        CancellationToken cancellationToken = default)
+        => await DbSet
+            .Include(r => r.Issues)
+            .Where(r => r.PullRequestId == pullRequestId)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 }

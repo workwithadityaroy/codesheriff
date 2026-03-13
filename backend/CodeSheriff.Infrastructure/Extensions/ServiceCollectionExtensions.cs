@@ -3,10 +3,15 @@ using CodeSheriff.Application.Common.Options;
 using CodeSheriff.Domain.Interfaces;
 using CodeSheriff.Infrastructure.Persistence;
 using CodeSheriff.Infrastructure.Services;
+using CodeSheriff.Infrastructure.Services.AI;
+using CodeSheriff.Infrastructure.Services.Email;
 using CodeSheriff.Infrastructure.Services.GitHub;
+using CodeSheriff.Infrastructure.Services.Queue;
+using CodeSheriff.Infrastructure.Workers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using StackExchange.Redis;
 
 namespace CodeSheriff.Infrastructure.Extensions;
 
@@ -36,9 +41,54 @@ public static class ServiceCollectionExtensions
 
         services.AddHttpContextAccessor();
         services.AddScoped<ICurrentUserService, CurrentUserService>();
+
+        // GitHub
         services.AddScoped<IGitHubService, GitHubService>();
         services.Configure<GitHubOptions>(configuration.GetSection(GitHubOptions.SectionName));
         services.Configure<ClerkOptions>(configuration.GetSection(ClerkOptions.SectionName));
+
+        // Redis queue
+        var redisConn = configuration.GetConnectionString("Redis") ?? "localhost:6379";
+        services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConn));
+        services.AddScoped<IReviewQueueService, ReviewQueueService>();
+        services.AddHostedService<ReviewBackgroundWorker>();
+
+        // Named HTTP clients
+        services.AddHttpClient("github", c =>
+        {
+            c.BaseAddress = new Uri("https://api.github.com");
+            c.DefaultRequestHeaders.Add("User-Agent", "CodeSheriff/1.0");
+            c.DefaultRequestHeaders.Add("X-GitHub-Api-Version", "2022-11-28");
+        });
+        services.AddHttpClient("anthropic", c =>
+        {
+            c.BaseAddress = new Uri("https://api.anthropic.com");
+            c.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
+        });
+
+        // AI review
+        services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));
+        services.AddScoped<IAiReviewService, AiReviewService>();
+
+        // Email (Resend)
+        var resendApiKey = configuration["Resend:ApiKey"] ?? string.Empty;
+        services.Configure<ResendOptions>(configuration.GetSection(ResendOptions.SectionName));
+        services.AddHttpClient("resend", c =>
+        {
+            c.BaseAddress = new Uri("https://api.resend.com/");
+            c.DefaultRequestHeaders.Add("Authorization", $"Bearer {resendApiKey}");
+        });
+
+        // Clerk backend API (for WeeklyReportWorker user lookup)
+        var clerkSecretKey = configuration["Clerk:SecretKey"] ?? string.Empty;
+        services.AddHttpClient("clerk", c =>
+        {
+            c.BaseAddress = new Uri("https://api.clerk.com/v1/");
+            c.DefaultRequestHeaders.Add("Authorization", $"Bearer {clerkSecretKey}");
+        });
+
+        services.AddScoped<IEmailService, ResendEmailService>();
+        services.AddHostedService<WeeklyReportWorker>();
 
         return services;
     }

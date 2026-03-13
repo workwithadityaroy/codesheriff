@@ -1,3 +1,4 @@
+using CodeSheriff.Application.PullRequests.Queries.GetPullRequestsByRepository;
 using CodeSheriff.Application.Repositories.Commands.RegisterRepository;
 using CodeSheriff.Application.Repositories.Queries.GetRepositories;
 using CodeSheriff.Application.Repositories.Queries.GetRepositoryById;
@@ -39,6 +40,20 @@ public sealed class RepositoriesController : ControllerBase
     public async Task<IActionResult> GetById(Guid id, CancellationToken cancellationToken)
     {
         var result = await _sender.Send(new GetRepositoryByIdQuery(id), cancellationToken);
+
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>Returns all pull requests for a repository.</summary>
+    [HttpGet("{id:guid}/pull-requests")]
+    [ProducesResponseType(typeof(IReadOnlyList<PullRequestSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPullRequests(Guid id, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetPullRequestsByRepositoryQuery(id), cancellationToken);
 
         if (result.IsFailure)
             return NotFound(new { error = result.Error });
