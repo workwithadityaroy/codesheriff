@@ -63,9 +63,7 @@ internal sealed class SendWeeklyReportCommandHandler
             foreach (var pr in reviewedPrs)
             {
                 var review = await _unitOfWork.Reviews
-                    .GetWithIssuesByIdAsync(
-                        await GetLatestReviewIdAsync(pr.Id, cancellationToken),
-                        cancellationToken);
+                    .GetLatestWithIssuesByPullRequestIdAsync(pr.Id, cancellationToken);
 
                 if (review is null || review.Status != ReviewStatus.Completed)
                     continue;
@@ -113,9 +111,4 @@ internal sealed class SendWeeklyReportCommandHandler
         return Result.Success();
     }
 
-    private async Task<Guid> GetLatestReviewIdAsync(Guid pullRequestId, CancellationToken ct)
-    {
-        var review = await _unitOfWork.Reviews.GetByPullRequestIdAsync(pullRequestId, ct);
-        return review?.Id ?? Guid.Empty;
-    }
 }

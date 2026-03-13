@@ -8,7 +8,7 @@ internal sealed class ReviewRepository : BaseRepository<Review>, IReviewReposito
 {
     public ReviewRepository(CodeSheriffDbContext context) : base(context) { }
 
-    public async Task<Review?> GetByPullRequestIdAsync(
+    public async Task<Review?> GetLatestByPullRequestIdAsync(
         Guid pullRequestId,
         CancellationToken cancellationToken = default)
         => await DbSet

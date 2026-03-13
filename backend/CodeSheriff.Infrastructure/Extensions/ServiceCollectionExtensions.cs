@@ -71,20 +71,16 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IAiReviewService, AiReviewService>();
 
         // Email (Resend)
-        var resendApiKey = configuration["Resend:ApiKey"] ?? string.Empty;
         services.Configure<ResendOptions>(configuration.GetSection(ResendOptions.SectionName));
         services.AddHttpClient("resend", c =>
         {
             c.BaseAddress = new Uri("https://api.resend.com/");
-            c.DefaultRequestHeaders.Add("Authorization", $"Bearer {resendApiKey}");
         });
 
         // Clerk backend API (for WeeklyReportWorker user lookup)
-        var clerkSecretKey = configuration["Clerk:SecretKey"] ?? string.Empty;
         services.AddHttpClient("clerk", c =>
         {
             c.BaseAddress = new Uri("https://api.clerk.com/v1/");
-            c.DefaultRequestHeaders.Add("Authorization", $"Bearer {clerkSecretKey}");
         });
 
         services.AddScoped<IEmailService, ResendEmailService>();

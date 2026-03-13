@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text;
 using CodeSheriff.Application.Common.Interfaces;
@@ -9,7 +10,7 @@ namespace CodeSheriff.Infrastructure.Services.Email;
 
 internal sealed class ResendEmailService : IEmailService
 {
-    private readonly HttpClient _http;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly ResendOptions _options;
     private readonly ILogger<ResendEmailService> _logger;
 
@@ -18,7 +19,7 @@ internal sealed class ResendEmailService : IEmailService
         IOptions<ResendOptions> options,
         ILogger<ResendEmailService> logger)
     {
-        _http = httpClientFactory.CreateClient("resend");
+        _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _logger = logger;
     }
@@ -45,7 +46,11 @@ internal sealed class ResendEmailService : IEmailService
             html
         };
 
-        var response = await _http.PostAsJsonAsync("emails", payload, cancellationToken);
+        var http = _httpClientFactory.CreateClient("resend");
+        using var request = new HttpRequestMessage(HttpMethod.Post, "emails");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _options.ApiKey);
+        request.Content = JsonContent.Create(payload);
+        var response = await http.SendAsync(request, cancellationToken);
 
         if (!response.IsSuccessStatusCode)
         {

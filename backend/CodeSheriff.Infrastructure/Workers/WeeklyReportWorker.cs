@@ -1,12 +1,15 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using CodeSheriff.Application.Common.Options;
 using CodeSheriff.Application.Reports.Commands.SendWeeklyReport;
 using CodeSheriff.Domain.Interfaces;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace CodeSheriff.Infrastructure.Workers;
 
@@ -14,13 +17,16 @@ internal sealed class WeeklyReportWorker : BackgroundService
 {
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<WeeklyReportWorker> _logger;
+    private readonly ClerkOptions _clerkOptions;
 
     public WeeklyReportWorker(
         IServiceScopeFactory scopeFactory,
-        ILogger<WeeklyReportWorker> logger)
+        ILogger<WeeklyReportWorker> logger,
+        IOptions<ClerkOptions> clerkOptions)
     {
         _scopeFactory = scopeFactory;
         _logger = logger;
+        _clerkOptions = clerkOptions.Value;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -65,13 +71,12 @@ internal sealed class WeeklyReportWorker : BackgroundService
 
             _logger.LogInformation("Sending weekly reports to {Count} users.", userIds.Count);
 
-            var clerkClient = httpFactory.CreateClient("clerk");
-
             foreach (var clerkUserId in userIds)
             {
                 try
                 {
-                    var (email, name) = await GetClerkUserInfoAsync(clerkClient, clerkUserId, stoppingToken);
+                    var clerkClient = httpFactory.CreateClient("clerk");
+                    var (email, name) = await GetClerkUserInfoAsync(clerkClient, _clerkOptions.SecretKey, clerkUserId, stoppingToken);
 
                     if (string.IsNullOrEmpty(email))
                     {
@@ -97,10 +102,13 @@ internal sealed class WeeklyReportWorker : BackgroundService
 
     private static async Task<(string Email, string Name)> GetClerkUserInfoAsync(
         HttpClient clerkClient,
+        string secretKey,
         string clerkUserId,
         CancellationToken ct)
     {
-        var response = await clerkClient.GetAsync($"users/{clerkUserId}", ct);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"users/{clerkUserId}");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", secretKey);
+        var response = await clerkClient.SendAsync(request, ct);
         if (!response.IsSuccessStatusCode) return (string.Empty, string.Empty);
 
         var options = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower };

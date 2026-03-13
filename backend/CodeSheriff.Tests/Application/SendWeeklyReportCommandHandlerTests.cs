@@ -72,10 +72,7 @@ public sealed class SendWeeklyReportCommandHandlerTests
             .Setup(r => r.GetByRepositoryIdAsync(repo.Id, default))
             .ReturnsAsync(new List<PullRequest> { pr }.AsReadOnly());
         _reviewRepo
-            .Setup(r => r.GetByPullRequestIdAsync(pr.Id, default))
-            .ReturnsAsync(review);
-        _reviewRepo
-            .Setup(r => r.GetWithIssuesByIdAsync(review.Id, default))
+            .Setup(r => r.GetLatestWithIssuesByPullRequestIdAsync(pr.Id, default))
             .ReturnsAsync(review);
 
         WeeklyReportData? capturedData = null;

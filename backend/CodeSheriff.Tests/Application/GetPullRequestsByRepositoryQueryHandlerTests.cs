@@ -72,7 +72,7 @@ public sealed class GetPullRequestsByRepositoryQueryHandlerTests
             .Setup(r => r.GetByRepositoryIdAsync(RepoId, default))
             .ReturnsAsync(new List<PullRequest> { pr }.AsReadOnly());
         _reviewRepo
-            .Setup(r => r.GetByPullRequestIdAsync(pr.Id, default))
+            .Setup(r => r.GetLatestWithIssuesByPullRequestIdAsync(pr.Id, default))
             .ReturnsAsync((Review?)null);
 
         var result = await _handler.Handle(new GetPullRequestsByRepositoryQuery(RepoId), default);
