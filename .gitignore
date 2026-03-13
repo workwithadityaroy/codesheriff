@@ -1,0 +1,36 @@
+# .NET build artifacts
+**/bin/
+**/obj/
+
+# Visual Studio / VS Code
+.vs/
+*.user
+*.suo
+.vscode/settings.json
+
+# NuGet
+*.nupkg
+.nuget/
+
+# EF Core design-time builds
+*.db
+*.db-shm
+*.db-wal
+
+# Local secrets (never commit real keys)
+appsettings.*.local.json
+**/appsettings.Secrets.json
+.env
+.env.local
+.env.*.local
+
+# Logs
+Logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Claude Code project-local settings
+.claude/
