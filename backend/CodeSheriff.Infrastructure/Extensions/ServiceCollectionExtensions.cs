@@ -4,6 +4,7 @@ using CodeSheriff.Domain.Interfaces;
 using CodeSheriff.Infrastructure.Persistence;
 using CodeSheriff.Infrastructure.Services;
 using CodeSheriff.Infrastructure.Services.AI;
+using CodeSheriff.Infrastructure.Services.AI.Providers;
 using CodeSheriff.Infrastructure.Services.Email;
 using CodeSheriff.Infrastructure.Services.GitHub;
 using CodeSheriff.Infrastructure.Services.Queue;
@@ -65,9 +66,16 @@ public static class ServiceCollectionExtensions
             c.BaseAddress = new Uri("https://api.anthropic.com");
             c.DefaultRequestHeaders.Add("anthropic-version", "2023-06-01");
         });
+        services.AddHttpClient("openai", c =>
+        {
+            c.BaseAddress = new Uri("https://api.openai.com");
+        });
 
-        // AI review
+        // AI review — provider abstraction
         services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));
+        services.AddScoped<ClaudeAiProvider>();
+        services.AddScoped<OpenAiProvider>();
+        services.AddScoped<AzureOpenAiProvider>();
         services.AddScoped<IAiReviewService, AiReviewService>();
 
         // Email (Resend)

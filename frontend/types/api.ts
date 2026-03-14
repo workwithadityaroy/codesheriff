@@ -55,6 +55,14 @@ export interface DashboardSummaryDto {
   criticalIssueCount: number;
 }
 
+export interface UserSettingsDto {
+  aiProvider: string;
+  aiModel: string;
+  hasApiKey: boolean;
+  notificationEmail: string;
+  weeklyReportEnabled: boolean;
+}
+
 export interface PagedResult<T> {
   items: T[];
   totalCount: number;

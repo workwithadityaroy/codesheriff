@@ -3,17 +3,17 @@ using CodeSheriff.Domain.Common;
 
 namespace CodeSheriff.Application.Common.Interfaces;
 
-public interface IAiReviewService
+/// <summary>Abstraction over AI review backends (Claude, OpenAI, Azure OpenAI, etc.).</summary>
+public interface IAiProvider
 {
-    Task<Result<AiReviewResult>> ReviewPullRequestAsync(
+    /// <summary>Short key identifying the provider, e.g. "claude", "openai", "azure-openai".</summary>
+    string ProviderKey { get; }
+
+    Task<Result<AiReviewResult>> ReviewAsync(
         string diff,
         string repoFullName,
         int prNumber,
         string prTitle,
-        CancellationToken cancellationToken = default);
-
-    Task<Result> TestConnectionAsync(
-        string providerKey,
         string apiKey,
         string model,
         CancellationToken cancellationToken = default);

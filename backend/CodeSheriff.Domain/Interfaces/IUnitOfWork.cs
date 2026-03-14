@@ -6,6 +6,7 @@ public interface IUnitOfWork : IDisposable
     IPullRequestRepository PullRequests { get; }
     IReviewRepository Reviews { get; }
     IWeeklyReportRepository WeeklyReports { get; }
+    IUserSettingsRepository UserSettings { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

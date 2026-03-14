@@ -17,6 +17,7 @@ public sealed class CodeSheriffDbContext : DbContext
     public DbSet<Review> Reviews => Set<Review>();
     public DbSet<ReviewIssue> ReviewIssues => Set<ReviewIssue>();
     public DbSet<WeeklyReport> WeeklyReports => Set<WeeklyReport>();
+    public DbSet<UserSettings> UserSettings => Set<UserSettings>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

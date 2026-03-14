@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { UserButton } from '@clerk/nextjs';
-import { LayoutDashboard, GitBranch, Shield, ChevronRight } from 'lucide-react';
+import { LayoutDashboard, GitBranch, Shield, ChevronRight, Settings } from 'lucide-react';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,6 +25,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <p className="px-3 mb-2 text-[10px] font-semibold text-neutral-600 uppercase tracking-widest">Menu</p>
           <NavLink href="/dashboard" icon={<LayoutDashboard size={15} />} label="Dashboard" />
           <NavLink href="/repositories" icon={<GitBranch size={15} />} label="Repositories" />
+          <NavLink href="/settings" icon={<Settings size={15} />} label="Settings" />
         </nav>
 
         {/* User */}
