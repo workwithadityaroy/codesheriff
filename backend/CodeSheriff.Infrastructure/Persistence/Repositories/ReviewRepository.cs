@@ -1,4 +1,5 @@
 using CodeSheriff.Domain.Entities;
+using CodeSheriff.Domain.Enums;
 using CodeSheriff.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,12 +9,14 @@ internal sealed class ReviewRepository : BaseRepository<Review>, IReviewReposito
 {
     public ReviewRepository(CodeSheriffDbContext context) : base(context) { }
 
-    public async Task<Review?> GetByPullRequestIdAsync(
+    public async Task<Review?> GetLatestByPullRequestIdAsync(
         Guid pullRequestId,
         CancellationToken cancellationToken = default)
         => await DbSet
             .AsNoTracking()
-            .FirstOrDefaultAsync(r => r.PullRequestId == pullRequestId, cancellationToken);
+            .Where(r => r.PullRequestId == pullRequestId)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
 
     public async Task<Review?> GetWithIssuesByIdAsync(
         Guid reviewId,
@@ -21,4 +24,22 @@ internal sealed class ReviewRepository : BaseRepository<Review>, IReviewReposito
         => await DbSet
             .Include(r => r.Issues)
             .FirstOrDefaultAsync(r => r.Id == reviewId, cancellationToken);
+
+    public async Task<Review?> GetLatestWithIssuesByPullRequestIdAsync(
+        Guid pullRequestId,
+        CancellationToken cancellationToken = default)
+        => await DbSet
+            .Include(r => r.Issues)
+            .Where(r => r.PullRequestId == pullRequestId)
+            .OrderByDescending(r => r.CreatedAt)
+            .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<bool> HasActiveReviewAsync(
+        Guid pullRequestId,
+        CancellationToken cancellationToken = default)
+        => await DbSet
+            .AsNoTracking()
+            .AnyAsync(r => r.PullRequestId == pullRequestId
+                && (r.Status == ReviewStatus.Pending || r.Status == ReviewStatus.Processing),
+                cancellationToken);
 }

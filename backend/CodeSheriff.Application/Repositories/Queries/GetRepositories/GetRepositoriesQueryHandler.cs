@@ -22,7 +22,7 @@ internal sealed class GetRepositoriesQueryHandler
         CancellationToken cancellationToken)
     {
         var userId = _currentUserService.GetClerkUserId();
-        var repositories = await _unitOfWork.Repositories.GetActiveByClerkUserIdAsync(userId, cancellationToken);
+        var repositories = await _unitOfWork.Repositories.GetAccessibleByClerkUserIdAsync(userId, cancellationToken);
 
         var dtos = repositories
             .Select(r => new RepositoryDto(

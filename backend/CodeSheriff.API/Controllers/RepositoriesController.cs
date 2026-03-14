@@ -1,3 +1,5 @@
+using CodeSheriff.Application.Common;
+using CodeSheriff.Application.PullRequests.Queries.GetPullRequestsByRepository;
 using CodeSheriff.Application.Repositories.Commands.RegisterRepository;
 using CodeSheriff.Application.Repositories.Queries.GetRepositories;
 using CodeSheriff.Application.Repositories.Queries.GetRepositoryById;
@@ -46,6 +48,27 @@ public sealed class RepositoriesController : ControllerBase
         return Ok(result.Value);
     }
 
+    /// <summary>Returns pull requests for a repository. Supports optional server-side pagination.</summary>
+    [HttpGet("{id:guid}/pull-requests")]
+    [ProducesResponseType(typeof(PagedResult<PullRequestSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPullRequests(
+        Guid id,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 0,
+        [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new GetPullRequestsByRepositoryQuery(id, page, pageSize, status),
+            cancellationToken);
+
+        if (result.IsFailure)
+            return NotFound(new { error = result.Error });
+
+        return Ok(result.Value);
+    }
+
     /// <summary>Registers a GitHub repository for the current user.</summary>
     [HttpPost]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
@@ -59,7 +82,9 @@ public sealed class RepositoriesController : ControllerBase
             request.Owner,
             request.Name,
             request.FullName,
-            request.InstallationId);
+            request.InstallationId,
+            request.GitProvider,
+            request.AccessToken);
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -75,4 +100,6 @@ public sealed record RegisterRepositoryRequest(
     string Owner,
     string Name,
     string FullName,
-    long InstallationId);
+    long InstallationId,
+    string GitProvider = "github",
+    string AccessToken = "");

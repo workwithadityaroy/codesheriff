@@ -1,6 +1,7 @@
 using CodeSheriff.Application.Common.Interfaces;
 using CodeSheriff.Domain.Common;
 using CodeSheriff.Domain.Entities;
+using CodeSheriff.Domain.Enums;
 using CodeSheriff.Domain.Interfaces;
 using MediatR;
 
@@ -24,11 +25,14 @@ internal sealed class RegisterRepositoryCommandHandler
     {
         var clerkUserId = _currentUserService.GetClerkUserId();
 
+        if (!Enum.TryParse<GitProvider>(request.GitProvider, ignoreCase: true, out var provider))
+            provider = GitProvider.GitHub;
+
         var existing = await _unitOfWork.Repositories.GetByGitHubIdAsync(request.GitHubId, cancellationToken);
 
         if (existing is not null)
         {
-            if (existing.ClerkUserId == clerkUserId)
+            if (existing.ClerkUserId == clerkUserId && existing.Provider == provider)
                 return Result.Success(existing.Id);
 
             return Result.Failure<Guid>("Repository is already registered.");
@@ -40,7 +44,9 @@ internal sealed class RegisterRepositoryCommandHandler
             request.Name,
             request.FullName,
             request.InstallationId,
-            clerkUserId);
+            clerkUserId,
+            provider,
+            request.AccessToken);
 
         await _unitOfWork.Repositories.AddAsync(repository, cancellationToken);
         await _unitOfWork.SaveChangesAsync(cancellationToken);

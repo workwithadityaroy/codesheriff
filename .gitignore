@@ -20,6 +20,7 @@
 # Local secrets (never commit real keys)
 appsettings.*.local.json
 **/appsettings.Secrets.json
+**/appsettings.Development.json
 .env
 .env.local
 .env.*.local

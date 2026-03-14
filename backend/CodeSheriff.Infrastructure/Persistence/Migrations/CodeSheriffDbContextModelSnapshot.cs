@@ -89,6 +89,14 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasDefaultValue("")
+                        .HasColumnName("access_token");
+
                     b.Property<string>("ClerkUserId")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -129,6 +137,14 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("owner");
 
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("GitHub")
+                        .HasColumnName("git_provider");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -142,11 +158,69 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_repositories_full_name");
 
-                    b.HasIndex("GitHubId")
+                    b.HasIndex("GitHubId", "Provider")
                         .IsUnique()
-                        .HasDatabaseName("ix_repositories_github_id");
+                        .HasDatabaseName("ix_repositories_github_id_provider");
 
                     b.ToTable("repositories", (string)null);
+                });
+
+            modelBuilder.Entity("CodeSheriff.Domain.Entities.RepositoryMember", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("AcceptedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
+
+                    b.Property<string>("ClerkUserId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("clerk_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("InviteToken")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("invite_token");
+
+                    b.Property<string>("InvitedEmail")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("invited_email");
+
+                    b.Property<Guid>("RepositoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("repository_id");
+
+                    b.Property<string>("Role")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("role");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClerkUserId")
+                        .HasDatabaseName("ix_repository_members_clerk_user_id");
+
+                    b.HasIndex("InviteToken")
+                        .IsUnique()
+                        .HasDatabaseName("ix_repository_members_invite_token")
+                        .HasFilter("invite_token IS NOT NULL");
+
+                    b.HasIndex("RepositoryId", "InvitedEmail")
+                        .IsUnique()
+                        .HasDatabaseName("ix_repository_members_repository_id_invited_email");
+
+                    b.ToTable("repository_members", (string)null);
                 });
 
             modelBuilder.Entity("CodeSheriff.Domain.Entities.Review", b =>
@@ -255,6 +329,63 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                     b.ToTable("review_issues", (string)null);
                 });
 
+            modelBuilder.Entity("CodeSheriff.Domain.Entities.UserSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("AiApiKey")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("ai_api_key");
+
+                    b.Property<string>("AiModel")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("ai_model");
+
+                    b.Property<string>("AiProvider")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("ai_provider");
+
+                    b.Property<string>("ClerkUserId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("clerk_user_id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("NotificationEmail")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("notification_email");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<bool>("WeeklyReportEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("weekly_report_enabled");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClerkUserId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_user_settings_clerk_user_id");
+
+                    b.ToTable("user_settings", (string)null);
+                });
+
             modelBuilder.Entity("CodeSheriff.Domain.Entities.WeeklyReport", b =>
                 {
                     b.Property<Guid>("Id")
@@ -318,6 +449,17 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                     b.Navigation("Repository");
                 });
 
+            modelBuilder.Entity("CodeSheriff.Domain.Entities.RepositoryMember", b =>
+                {
+                    b.HasOne("CodeSheriff.Domain.Entities.Repository", "Repository")
+                        .WithMany("Members")
+                        .HasForeignKey("RepositoryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Repository");
+                });
+
             modelBuilder.Entity("CodeSheriff.Domain.Entities.Review", b =>
                 {
                     b.HasOne("CodeSheriff.Domain.Entities.PullRequest", "PullRequest")
@@ -358,6 +500,8 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("CodeSheriff.Domain.Entities.Repository", b =>
                 {
+                    b.Navigation("Members");
+
                     b.Navigation("PullRequests");
 
                     b.Navigation("WeeklyReports");

@@ -1,3 +1,4 @@
+using CodeSheriff.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using DomainRepository = CodeSheriff.Domain.Entities.Repository;
@@ -48,6 +49,19 @@ internal sealed class RepositoryConfiguration : IEntityTypeConfiguration<DomainR
             .HasColumnName("is_active")
             .IsRequired();
 
+        builder.Property(r => r.Provider)
+            .HasColumnName("git_provider")
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired()
+            .HasDefaultValue(GitProvider.GitHub);
+
+        builder.Property(r => r.AccessToken)
+            .HasColumnName("access_token")
+            .HasMaxLength(1024)
+            .IsRequired()
+            .HasDefaultValue(string.Empty);
+
         builder.Property(r => r.CreatedAt)
             .HasColumnName("created_at")
             .IsRequired();
@@ -56,9 +70,10 @@ internal sealed class RepositoryConfiguration : IEntityTypeConfiguration<DomainR
             .HasColumnName("updated_at")
             .IsRequired();
 
-        builder.HasIndex(r => r.GitHubId)
+        // Composite unique: same numeric id may exist across different providers
+        builder.HasIndex(r => new { r.GitHubId, r.Provider })
             .IsUnique()
-            .HasDatabaseName("ix_repositories_github_id");
+            .HasDatabaseName("ix_repositories_github_id_provider");
 
         builder.HasIndex(r => r.ClerkUserId)
             .HasDatabaseName("ix_repositories_clerk_user_id");
@@ -76,5 +91,6 @@ internal sealed class RepositoryConfiguration : IEntityTypeConfiguration<DomainR
             .WithOne(wr => wr.Repository)
             .HasForeignKey(wr => wr.RepositoryId)
             .OnDelete(DeleteBehavior.Cascade);
+
     }
 }

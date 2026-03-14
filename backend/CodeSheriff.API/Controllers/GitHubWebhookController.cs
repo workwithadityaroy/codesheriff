@@ -1,6 +1,8 @@
 using System.Text.Json;
 using CodeSheriff.API.Models;
 using CodeSheriff.API.Services;
+using CodeSheriff.Application.Common.Interfaces;
+using CodeSheriff.Application.Common.Models;
 using CodeSheriff.Application.Common.Options;
 using CodeSheriff.Domain.Entities;
 using CodeSheriff.Domain.Interfaces;
@@ -15,11 +17,16 @@ public sealed class GitHubWebhookController : ControllerBase
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly GitHubOptions _gitHubOptions;
+    private readonly IReviewQueueService _reviewQueueService;
 
-    public GitHubWebhookController(IUnitOfWork unitOfWork, IOptions<GitHubOptions> gitHubOptions)
+    public GitHubWebhookController(
+        IUnitOfWork unitOfWork,
+        IOptions<GitHubOptions> gitHubOptions,
+        IReviewQueueService reviewQueueService)
     {
         _unitOfWork = unitOfWork;
         _gitHubOptions = gitHubOptions.Value;
+        _reviewQueueService = reviewQueueService;
     }
 
     [HttpPost("webhook")]
@@ -31,7 +38,10 @@ public sealed class GitHubWebhookController : ControllerBase
 
         var signatureHeader = Request.Headers["X-Hub-Signature-256"].FirstOrDefault();
         if (!WebhookSignatureValidator.IsValid(body, _gitHubOptions.WebhookSecret, signatureHeader))
-            return Unauthorized();
+            return Problem(
+                statusCode: StatusCodes.Status401Unauthorized,
+                title: "Invalid webhook signature.",
+                detail: "The X-Hub-Signature-256 header is missing or does not match the expected HMAC-SHA256 signature.");
 
         var eventType = Request.Headers["X-GitHub-Event"].FirstOrDefault();
 
@@ -55,6 +65,8 @@ public sealed class GitHubWebhookController : ControllerBase
         if (repo is null)
             return Ok();
 
+        Guid pullRequestId;
+
         var existingPr = await _unitOfWork.PullRequests.GetByGitHubPrNumberAsync(
             repo.Id, payload.Number, cancellationToken);
 
@@ -69,13 +81,28 @@ public sealed class GitHubWebhookController : ControllerBase
                 payload.PullRequest.User.Login);
 
             await _unitOfWork.PullRequests.AddAsync(pr, cancellationToken);
+            pullRequestId = pr.Id;
         }
         else
         {
             existingPr.MarkAsReviewing();
+            pullRequestId = existingPr.Id;
         }
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
+
+        var hasActive = await _unitOfWork.Reviews.HasActiveReviewAsync(pullRequestId, cancellationToken);
+        if (hasActive)
+            return Ok(); // review already in flight — skip to save AI tokens
+
+        await _reviewQueueService.EnqueueAsync(
+            new ReviewJobMessage(
+                pullRequestId,
+                repo.InstallationId,
+                repo.Owner,
+                repo.Name,
+                payload.Number),
+            cancellationToken);
 
         return Ok();
     }
