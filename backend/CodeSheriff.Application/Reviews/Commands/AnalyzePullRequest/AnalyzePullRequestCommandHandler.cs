@@ -52,68 +52,90 @@ internal sealed class AnalyzePullRequestCommandHandler
 
         var startedAt = DateTimeOffset.UtcNow;
 
-        _logger.LogInformation(
-            "Starting review for PR #{PrNumber} in {RepoFullName} via {Provider}",
-            request.GitHubPrNumber, repository.FullName, repository.Provider);
-
-        var gitProvider = _gitProviderFactory.GetProvider(repository.Provider);
-        var diffResult = await gitProvider.GetPullRequestDiffAsync(
-            repository, request.GitHubPrNumber, cancellationToken);
-
-        if (!diffResult.IsSuccess)
+        try
         {
-            _logger.LogWarning("Diff fetch failed: {Error}", diffResult.Error);
-            review.MarkAsFailed();
-            pullRequest.MarkAsFailed();
+            _logger.LogInformation(
+                "Starting review for PR #{PrNumber} in {RepoFullName} via {Provider}",
+                request.GitHubPrNumber, repository.FullName, repository.Provider);
+
+            var gitProvider = _gitProviderFactory.GetProvider(repository.Provider);
+            var diffResult = await gitProvider.GetPullRequestDiffAsync(
+                repository, request.GitHubPrNumber, cancellationToken);
+
+            if (!diffResult.IsSuccess)
+            {
+                _logger.LogWarning("Diff fetch failed: {Error}", diffResult.Error);
+                review.MarkAsFailed();
+                pullRequest.MarkAsFailed();
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return Result.Failure<Guid>(diffResult.Error);
+            }
+
+            var aiResult = await _aiReviewService.ReviewPullRequestAsync(
+                diffResult.Value!, repository.FullName,
+                request.GitHubPrNumber, pullRequest.Title,
+                cancellationToken);
+
+            if (!aiResult.IsSuccess)
+            {
+                _logger.LogWarning("AI review failed: {Error}", aiResult.Error);
+                review.MarkAsFailed();
+                pullRequest.MarkAsFailed();
+                await _unitOfWork.SaveChangesAsync(cancellationToken);
+                return Result.Failure<Guid>(aiResult.Error);
+            }
+
+            var aiReviewResult = aiResult.Value!;
+            var processingTimeMs = (int)(DateTimeOffset.UtcNow - startedAt).TotalMilliseconds;
+
+            review.Complete(
+                aiReviewResult.TechDebtScore,
+                aiReviewResult.Summary,
+                aiReviewResult.RawResponse,
+                processingTimeMs);
+
+            pullRequest.MarkAsReviewed();
+
+            foreach (var issue in aiReviewResult.Issues)
+            {
+                var reviewIssue = ReviewIssue.Create(
+                    review.Id,
+                    issue.Severity,
+                    issue.Category,
+                    issue.FilePath,
+                    issue.LineNumber,
+                    issue.Description,
+                    issue.Suggestion);
+
+                review.Issues.Add(reviewIssue);
+            }
+
             await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return Result.Failure<Guid>(diffResult.Error);
+
+            _logger.LogInformation(
+                "Review {ReviewId} completed for PR #{PrNumber} — score: {Score}",
+                review.Id, request.GitHubPrNumber, aiReviewResult.TechDebtScore);
+
+            return Result.Success(review.Id);
         }
-
-        var aiResult = await _aiReviewService.ReviewPullRequestAsync(
-            diffResult.Value!, repository.FullName,
-            request.GitHubPrNumber, pullRequest.Title,
-            cancellationToken);
-
-        if (!aiResult.IsSuccess)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            _logger.LogWarning("AI review failed: {Error}", aiResult.Error);
-            review.MarkAsFailed();
-            pullRequest.MarkAsFailed();
-            await _unitOfWork.SaveChangesAsync(cancellationToken);
-            return Result.Failure<Guid>(aiResult.Error);
+            _logger.LogError(ex,
+                "Unhandled exception during review for PR #{PrNumber}. Marking as failed.",
+                request.GitHubPrNumber);
+
+            try
+            {
+                review.MarkAsFailed();
+                pullRequest.MarkAsFailed();
+                await _unitOfWork.SaveChangesAsync(CancellationToken.None);
+            }
+            catch (Exception saveEx)
+            {
+                _logger.LogError(saveEx, "Failed to persist failure state for PR #{PrNumber}.", request.GitHubPrNumber);
+            }
+
+            return Result.Failure<Guid>($"Unexpected error: {ex.Message}");
         }
-
-        var aiReviewResult = aiResult.Value!;
-        var processingTimeMs = (int)(DateTimeOffset.UtcNow - startedAt).TotalMilliseconds;
-
-        review.Complete(
-            aiReviewResult.TechDebtScore,
-            aiReviewResult.Summary,
-            aiReviewResult.RawResponse,
-            processingTimeMs);
-
-        pullRequest.MarkAsReviewed();
-
-        foreach (var issue in aiReviewResult.Issues)
-        {
-            var reviewIssue = ReviewIssue.Create(
-                review.Id,
-                issue.Severity,
-                issue.Category,
-                issue.FilePath,
-                issue.LineNumber,
-                issue.Description,
-                issue.Suggestion);
-
-            review.Issues.Add(reviewIssue);
-        }
-
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
-        _logger.LogInformation(
-            "Review {ReviewId} completed for PR #{PrNumber} — score: {Score}",
-            review.Id, request.GitHubPrNumber, aiReviewResult.TechDebtScore);
-
-        return Result.Success(review.Id);
     }
 }

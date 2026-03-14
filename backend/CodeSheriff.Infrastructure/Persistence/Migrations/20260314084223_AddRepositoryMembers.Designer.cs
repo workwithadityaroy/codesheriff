@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CodeSheriff.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CodeSheriffDbContext))]
-    [Migration("20260314080249_AddRepositoryMembers")]
+    [Migration("20260314084223_AddRepositoryMembers")]
     partial class AddRepositoryMembers
     {
         /// <inheritdoc />
@@ -92,6 +92,14 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("AccessToken")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(1024)
+                        .HasColumnType("character varying(1024)")
+                        .HasDefaultValue("")
+                        .HasColumnName("access_token");
+
                     b.Property<string>("ClerkUserId")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -132,6 +140,14 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(255)")
                         .HasColumnName("owner");
 
+                    b.Property<string>("Provider")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasDefaultValue("GitHub")
+                        .HasColumnName("git_provider");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -145,9 +161,9 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
                         .IsUnique()
                         .HasDatabaseName("ix_repositories_full_name");
 
-                    b.HasIndex("GitHubId")
+                    b.HasIndex("GitHubId", "Provider")
                         .IsUnique()
-                        .HasDatabaseName("ix_repositories_github_id");
+                        .HasDatabaseName("ix_repositories_github_id_provider");
 
                     b.ToTable("repositories", (string)null);
                 });
@@ -155,47 +171,57 @@ namespace CodeSheriff.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("CodeSheriff.Domain.Entities.RepositoryMember", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
 
                     b.Property<DateTimeOffset?>("AcceptedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("accepted_at");
 
                     b.Property<string>("ClerkUserId")
                         .IsRequired()
                         .HasMaxLength(255)
-                        .HasColumnType("character varying(255)");
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("clerk_user_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone");
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
 
                     b.Property<string>("InviteToken")
                         .HasMaxLength(64)
-                        .HasColumnType("character varying(64)");
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("invite_token");
 
                     b.Property<string>("InvitedEmail")
                         .IsRequired()
                         .HasMaxLength(320)
-                        .HasColumnType("character varying(320)");
+                        .HasColumnType("character varying(320)")
+                        .HasColumnName("invited_email");
 
                     b.Property<Guid>("RepositoryId")
-                        .HasColumnType("uuid");
+                        .HasColumnType("uuid")
+                        .HasColumnName("repository_id");
 
                     b.Property<string>("Role")
                         .IsRequired()
                         .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("role");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ClerkUserId");
+                    b.HasIndex("ClerkUserId")
+                        .HasDatabaseName("ix_repository_members_clerk_user_id");
 
                     b.HasIndex("InviteToken")
                         .IsUnique()
+                        .HasDatabaseName("ix_repository_members_invite_token")
                         .HasFilter("invite_token IS NOT NULL");
 
                     b.HasIndex("RepositoryId", "InvitedEmail")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasDatabaseName("ix_repository_members_repository_id_invited_email");
 
                     b.ToTable("repository_members", (string)null);
                 });

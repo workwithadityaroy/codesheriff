@@ -25,7 +25,7 @@ internal sealed class GetDashboardSummaryQueryHandler
         CancellationToken cancellationToken)
     {
         var userId = _currentUserService.GetClerkUserId();
-        var repositories = await _unitOfWork.Repositories.GetActiveByClerkUserIdAsync(userId, cancellationToken);
+        var repositories = await _unitOfWork.Repositories.GetAccessibleByClerkUserIdAsync(userId, cancellationToken);
 
         var totalRepositories = repositories.Count;
         var totalPrsReviewed = 0;

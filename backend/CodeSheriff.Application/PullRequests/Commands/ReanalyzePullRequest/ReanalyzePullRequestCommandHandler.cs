@@ -1,6 +1,7 @@
 using CodeSheriff.Application.Common.Interfaces;
 using CodeSheriff.Application.Common.Models;
 using CodeSheriff.Domain.Common;
+using CodeSheriff.Domain.Enums;
 using CodeSheriff.Domain.Interfaces;
 using MediatR;
 
@@ -43,11 +44,24 @@ internal sealed class ReanalyzePullRequestCommandHandler
         if (repository.ClerkUserId != userId)
             return Result.Failure("Pull request not found.");
 
-        var hasActive = await _unitOfWork.Reviews.HasActiveReviewAsync(
+        // If there's an active review that has been stuck for > 10 minutes, force-fail it
+        // so the user can re-trigger without being permanently blocked.
+        const int staleThresholdMinutes = 10;
+        var activeReview = await _unitOfWork.Reviews.GetLatestByPullRequestIdAsync(
             request.PullRequestId, cancellationToken);
 
-        if (hasActive)
-            return Result.Failure("A review is already in progress for this pull request.");
+        if (activeReview is not null
+            && (activeReview.Status == ReviewStatus.Pending || activeReview.Status == ReviewStatus.Processing))
+        {
+            var ageMinutes = (DateTimeOffset.UtcNow - activeReview.CreatedAt).TotalMinutes;
+            if (ageMinutes < staleThresholdMinutes)
+                return Result.Failure("A review is already in progress. Please wait a moment.");
+
+            // Stale — reset it so the user can retry
+            activeReview.MarkAsFailed();
+            pullRequest.MarkAsFailed();
+            await _unitOfWork.SaveChangesAsync(cancellationToken);
+        }
 
         pullRequest.MarkAsReviewing();
         await _unitOfWork.SaveChangesAsync(cancellationToken);

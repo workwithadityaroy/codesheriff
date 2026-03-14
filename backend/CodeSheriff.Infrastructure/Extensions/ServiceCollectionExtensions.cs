@@ -56,6 +56,7 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IConnectionMultiplexer>(_ => ConnectionMultiplexer.Connect(redisConn));
         services.AddScoped<IReviewQueueService, ReviewQueueService>();
         services.AddHostedService<ReviewBackgroundWorker>();
+        services.AddHostedService<StuckReviewRecoveryWorker>();
 
         // Named HTTP clients
         services.AddHttpClient("github", c =>

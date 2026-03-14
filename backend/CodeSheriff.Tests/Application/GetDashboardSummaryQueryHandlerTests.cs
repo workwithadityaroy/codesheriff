@@ -36,7 +36,7 @@ public sealed class GetDashboardSummaryQueryHandlerTests
     public async Task Handle_NoRepositories_ReturnsAllZeros()
     {
         _repositoryRepo
-            .Setup(r => r.GetActiveByClerkUserIdAsync(UserId, default))
+            .Setup(r => r.GetAccessibleByClerkUserIdAsync(UserId, default))
             .ReturnsAsync(new List<Repository>().AsReadOnly());
 
         var result = await _handler.Handle(new GetDashboardSummaryQuery(), default);
@@ -63,7 +63,7 @@ public sealed class GetDashboardSummaryQueryHandlerTests
         review.Complete(60m, "Some debt.", "{}", 1000);
 
         _repositoryRepo
-            .Setup(r => r.GetActiveByClerkUserIdAsync(UserId, default))
+            .Setup(r => r.GetAccessibleByClerkUserIdAsync(UserId, default))
             .ReturnsAsync(new List<Repository> { repo }.AsReadOnly());
         _pullRequestRepo
             .Setup(r => r.GetByRepositoryIdAsync(repo.Id, default))

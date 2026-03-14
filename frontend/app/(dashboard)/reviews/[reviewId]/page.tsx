@@ -33,7 +33,7 @@ export default async function ReviewDetailPage({ params }: Props) {
   const isActive = review.status === 'Pending' || review.status === 'Processing';
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6 w-full min-w-0">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-xs text-neutral-600">
         <Link href="/repositories" className="hover:text-neutral-400 transition-colors">Repositories</Link>
