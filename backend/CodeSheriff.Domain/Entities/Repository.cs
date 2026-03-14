@@ -16,6 +16,7 @@ public class Repository : Entity
 
     public ICollection<PullRequest> PullRequests { get; private set; } = new List<PullRequest>();
     public ICollection<WeeklyReport> WeeklyReports { get; private set; } = new List<WeeklyReport>();
+    public ICollection<RepositoryMember> Members { get; private set; } = new List<RepositoryMember>();
 
     private Repository() { }
 

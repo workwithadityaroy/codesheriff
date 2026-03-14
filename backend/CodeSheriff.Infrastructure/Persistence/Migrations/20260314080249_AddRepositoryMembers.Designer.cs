@@ -3,6 +3,7 @@ using System;
 using CodeSheriff.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace CodeSheriff.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CodeSheriffDbContext))]
-    partial class CodeSheriffDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260314080249_AddRepositoryMembers")]
+    partial class AddRepositoryMembers
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

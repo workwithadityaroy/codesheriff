@@ -14,6 +14,7 @@ public sealed class GetPullRequestsByRepositoryQueryHandlerTests
     private readonly Mock<IRepositoryRepository> _repositoryRepo = new();
     private readonly Mock<IPullRequestRepository> _pullRequestRepo = new();
     private readonly Mock<IReviewRepository> _reviewRepo = new();
+    private readonly Mock<IRepositoryMemberRepository> _membersRepo = new();
     private readonly Mock<ICurrentUserService> _currentUserService = new();
 
     private readonly GetPullRequestsByRepositoryQueryHandler _handler;
@@ -26,6 +27,9 @@ public sealed class GetPullRequestsByRepositoryQueryHandlerTests
         _unitOfWork.SetupGet(u => u.Repositories).Returns(_repositoryRepo.Object);
         _unitOfWork.SetupGet(u => u.PullRequests).Returns(_pullRequestRepo.Object);
         _unitOfWork.SetupGet(u => u.Reviews).Returns(_reviewRepo.Object);
+        _unitOfWork.SetupGet(u => u.Members).Returns(_membersRepo.Object);
+        _membersRepo.Setup(m => m.IsMemberAsync(It.IsAny<Guid>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(false);
         _currentUserService.Setup(s => s.GetClerkUserId()).Returns(UserId);
 
         _handler = new GetPullRequestsByRepositoryQueryHandler(

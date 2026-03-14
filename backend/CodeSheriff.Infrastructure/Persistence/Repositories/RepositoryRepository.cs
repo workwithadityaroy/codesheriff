@@ -1,3 +1,4 @@
+using CodeSheriff.Domain.Entities;
 using CodeSheriff.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 using DomainRepository = CodeSheriff.Domain.Entities.Repository;
@@ -30,6 +31,19 @@ internal sealed class RepositoryRepository : BaseRepository<DomainRepository>, I
         => await DbSet
             .AsNoTracking()
             .Where(r => r.IsActive && r.ClerkUserId == clerkUserId)
+            .OrderBy(r => r.FullName)
+            .ToListAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<DomainRepository>> GetAccessibleByClerkUserIdAsync(
+        string clerkUserId, CancellationToken cancellationToken = default)
+        => await DbSet
+            .AsNoTracking()
+            .Where(r => r.IsActive && (
+                r.ClerkUserId == clerkUserId ||
+                Context.Set<RepositoryMember>().Any(m =>
+                    m.RepositoryId == r.Id &&
+                    m.ClerkUserId == clerkUserId &&
+                    m.AcceptedAt != null)))
             .OrderBy(r => r.FullName)
             .ToListAsync(cancellationToken);
 }

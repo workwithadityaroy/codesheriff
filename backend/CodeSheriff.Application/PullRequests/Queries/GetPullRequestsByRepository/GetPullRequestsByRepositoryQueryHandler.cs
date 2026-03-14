@@ -30,7 +30,9 @@ internal sealed class GetPullRequestsByRepositoryQueryHandler
             return Result.Failure<PagedResult<PullRequestSummaryDto>>("Repository not found.");
 
         var userId = _currentUserService.GetClerkUserId();
-        if (repo.ClerkUserId != userId)
+        var isOwner = repo.ClerkUserId == userId;
+        var isMember = !isOwner && await _unitOfWork.Members.IsMemberAsync(repo.Id, userId, cancellationToken);
+        if (!isOwner && !isMember)
             return Result.Failure<PagedResult<PullRequestSummaryDto>>("Repository not found.");
 
         IReadOnlyList<PullRequest> pullRequests;

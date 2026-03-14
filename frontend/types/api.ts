@@ -63,6 +63,21 @@ export interface UserSettingsDto {
   weeklyReportEnabled: boolean;
 }
 
+export interface MemberDto {
+  id: string;
+  repositoryId: string;
+  clerkUserId: string;
+  invitedEmail: string;
+  role: string;
+  isAccepted: boolean;
+  createdAt: string;
+}
+
+export interface InviteMemberResult {
+  memberId: string;
+  inviteToken: string;
+}
+
 export interface PagedResult<T> {
   items: T[];
   totalCount: number;

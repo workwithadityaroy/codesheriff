@@ -13,6 +13,7 @@ internal sealed class UnitOfWork : IUnitOfWork
     public IReviewRepository Reviews { get; }
     public IWeeklyReportRepository WeeklyReports { get; }
     public IUserSettingsRepository UserSettings { get; }
+    public IRepositoryMemberRepository Members { get; }
 
     public UnitOfWork(CodeSheriffDbContext context)
     {
@@ -22,6 +23,7 @@ internal sealed class UnitOfWork : IUnitOfWork
         Reviews = new ReviewRepository(context);
         WeeklyReports = new WeeklyReportRepository(context);
         UserSettings = new UserSettingsRepository(context);
+        Members = new RepositoryMemberRepository(context);
     }
 
     public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

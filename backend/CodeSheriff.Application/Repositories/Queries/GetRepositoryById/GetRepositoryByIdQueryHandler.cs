@@ -27,7 +27,10 @@ internal sealed class GetRepositoryByIdQueryHandler
         if (repository is null)
             return Result.Failure<RepositoryDto>($"Repository with ID '{request.Id}' was not found.");
 
-        if (repository.ClerkUserId != _currentUserService.GetClerkUserId())
+        var userId = _currentUserService.GetClerkUserId();
+        var isOwner = repository.ClerkUserId == userId;
+        var isMember = !isOwner && await _unitOfWork.Members.IsMemberAsync(repository.Id, userId, cancellationToken);
+        if (!isOwner && !isMember)
             return Result.Failure<RepositoryDto>($"Repository with ID '{request.Id}' was not found.");
 
         var dto = new RepositoryDto(
