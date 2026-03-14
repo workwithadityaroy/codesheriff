@@ -78,7 +78,8 @@ public sealed class GetPullRequestsByRepositoryQueryHandlerTests
         var result = await _handler.Handle(new GetPullRequestsByRepositoryQuery(RepoId), default);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(1);
-        result.Value[0].GitHubPrNumber.Should().Be(7);
+        result.Value.Items.Should().HaveCount(1);
+        result.Value.TotalCount.Should().Be(1);
+        result.Value.Items[0].GitHubPrNumber.Should().Be(7);
     }
 }

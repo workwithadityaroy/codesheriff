@@ -1,5 +1,5 @@
 import { fetchApi } from '@/lib/api';
-import { RepositoryDto, PullRequestSummaryDto } from '@/types/api';
+import { RepositoryDto, PullRequestSummaryDto, PagedResult } from '@/types/api';
 import PullRequestsTableLive from '@/components/PullRequestsTableLive';
 import EmptyState from '@/components/EmptyState';
 import { GitPullRequest } from 'lucide-react';
@@ -13,13 +13,17 @@ export default async function RepositoryDetailPage({ params }: Props) {
 
   let repo: RepositoryDto | null = null;
   let pullRequests: PullRequestSummaryDto[] = [];
+  let totalCount = 0;
   let error: string | null = null;
 
   try {
-    [repo, pullRequests] = await Promise.all([
+    const [repoData, paged] = await Promise.all([
       fetchApi<RepositoryDto>(`/api/v1/repositories/${repoId}`),
-      fetchApi<PullRequestSummaryDto[]>(`/api/v1/repositories/${repoId}/pull-requests`),
+      fetchApi<PagedResult<PullRequestSummaryDto>>(`/api/v1/repositories/${repoId}/pull-requests`),
     ]);
+    repo = repoData;
+    pullRequests = paged.items;
+    totalCount = paged.totalCount;
   } catch {
     error = 'Failed to load repository data.';
   }
@@ -40,8 +44,8 @@ export default async function RepositoryDetailPage({ params }: Props) {
         </div>
         <h1 className="text-xl font-semibold text-white tracking-tight">{repo.fullName}</h1>
         <p className="mt-0.5 text-sm text-neutral-500">
-          {pullRequests.length > 0
-            ? `${pullRequests.length} pull request${pullRequests.length !== 1 ? 's' : ''}`
+          {totalCount > 0
+            ? `${totalCount} pull request${totalCount !== 1 ? 's' : ''}`
             : 'No pull requests yet'}
         </p>
       </div>
@@ -53,7 +57,7 @@ export default async function RepositoryDetailPage({ params }: Props) {
           icon={<GitPullRequest size={22} className="text-blue-400" />}
         />
       ) : (
-        <PullRequestsTableLive initialPrs={pullRequests} repoId={repoId} />
+        <PullRequestsTableLive initialPrs={pullRequests} initialTotal={totalCount} repoId={repoId} />
       )}
     </div>
   );

@@ -1,3 +1,4 @@
+using CodeSheriff.Application.Common;
 using CodeSheriff.Application.PullRequests.Queries.GetPullRequestsByRepository;
 using CodeSheriff.Application.Repositories.Commands.RegisterRepository;
 using CodeSheriff.Application.Repositories.Queries.GetRepositories;
@@ -47,13 +48,20 @@ public sealed class RepositoriesController : ControllerBase
         return Ok(result.Value);
     }
 
-    /// <summary>Returns all pull requests for a repository.</summary>
+    /// <summary>Returns pull requests for a repository. Supports optional server-side pagination.</summary>
     [HttpGet("{id:guid}/pull-requests")]
-    [ProducesResponseType(typeof(IReadOnlyList<PullRequestSummaryDto>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedResult<PullRequestSummaryDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetPullRequests(Guid id, CancellationToken cancellationToken)
+    public async Task<IActionResult> GetPullRequests(
+        Guid id,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 0,
+        [FromQuery] string? status = null,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _sender.Send(new GetPullRequestsByRepositoryQuery(id), cancellationToken);
+        var result = await _sender.Send(
+            new GetPullRequestsByRepositoryQuery(id, page, pageSize, status),
+            cancellationToken);
 
         if (result.IsFailure)
             return NotFound(new { error = result.Error });

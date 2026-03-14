@@ -1,12 +1,14 @@
+using CodeSheriff.Application.Common;
 using CodeSheriff.Application.Common.Interfaces;
 using CodeSheriff.Domain.Common;
+using CodeSheriff.Domain.Entities;
 using CodeSheriff.Domain.Interfaces;
 using MediatR;
 
 namespace CodeSheriff.Application.PullRequests.Queries.GetPullRequestsByRepository;
 
 internal sealed class GetPullRequestsByRepositoryQueryHandler
-    : IRequestHandler<GetPullRequestsByRepositoryQuery, Result<IReadOnlyList<PullRequestSummaryDto>>>
+    : IRequestHandler<GetPullRequestsByRepositoryQuery, Result<PagedResult<PullRequestSummaryDto>>>
 {
     private readonly IUnitOfWork _unitOfWork;
     private readonly ICurrentUserService _currentUserService;
@@ -19,24 +21,42 @@ internal sealed class GetPullRequestsByRepositoryQueryHandler
         _currentUserService = currentUserService;
     }
 
-    public async Task<Result<IReadOnlyList<PullRequestSummaryDto>>> Handle(
+    public async Task<Result<PagedResult<PullRequestSummaryDto>>> Handle(
         GetPullRequestsByRepositoryQuery request,
         CancellationToken cancellationToken)
     {
         var repo = await _unitOfWork.Repositories.GetByIdAsync(request.RepositoryId, cancellationToken);
         if (repo is null)
-            return Result.Failure<IReadOnlyList<PullRequestSummaryDto>>("Repository not found.");
+            return Result.Failure<PagedResult<PullRequestSummaryDto>>("Repository not found.");
 
         var userId = _currentUserService.GetClerkUserId();
         if (repo.ClerkUserId != userId)
-            return Result.Failure<IReadOnlyList<PullRequestSummaryDto>>("Repository not found.");
+            return Result.Failure<PagedResult<PullRequestSummaryDto>>("Repository not found.");
 
-        var pullRequests = await _unitOfWork.PullRequests.GetByRepositoryIdAsync(request.RepositoryId, cancellationToken);
+        IReadOnlyList<PullRequest> pullRequests;
+        int totalCount;
+
+        if (request.PageSize > 0)
+        {
+            (pullRequests, totalCount) = await _unitOfWork.PullRequests.GetPagedByRepositoryIdAsync(
+                request.RepositoryId,
+                request.Page,
+                request.PageSize,
+                request.StatusFilter,
+                cancellationToken);
+        }
+        else
+        {
+            pullRequests = await _unitOfWork.PullRequests.GetByRepositoryIdAsync(
+                request.RepositoryId, cancellationToken);
+            totalCount = pullRequests.Count;
+        }
 
         var dtos = new List<PullRequestSummaryDto>(pullRequests.Count);
         foreach (var pr in pullRequests)
         {
-            var review = await _unitOfWork.Reviews.GetLatestWithIssuesByPullRequestIdAsync(pr.Id, cancellationToken);
+            var review = await _unitOfWork.Reviews.GetLatestWithIssuesByPullRequestIdAsync(
+                pr.Id, cancellationToken);
             dtos.Add(new PullRequestSummaryDto(
                 pr.Id,
                 pr.GitHubPrNumber,
@@ -52,6 +72,10 @@ internal sealed class GetPullRequestsByRepositoryQueryHandler
                 pr.UpdatedAt));
         }
 
-        return Result.Success<IReadOnlyList<PullRequestSummaryDto>>(dtos.AsReadOnly());
+        var page = request.PageSize > 0 ? request.Page : 1;
+        var pageSize = request.PageSize > 0 ? request.PageSize : totalCount;
+
+        return Result.Success(new PagedResult<PullRequestSummaryDto>(
+            dtos.AsReadOnly(), totalCount, page, pageSize));
     }
 }
