@@ -91,6 +91,10 @@ public sealed class GitHubWebhookController : ControllerBase
 
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
+        var hasActive = await _unitOfWork.Reviews.HasActiveReviewAsync(pullRequestId, cancellationToken);
+        if (hasActive)
+            return Ok(); // review already in flight — skip to save AI tokens
+
         await _reviewQueueService.EnqueueAsync(
             new ReviewJobMessage(
                 pullRequestId,

@@ -1,4 +1,5 @@
 using CodeSheriff.Domain.Entities;
+using CodeSheriff.Domain.Enums;
 using CodeSheriff.Domain.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
@@ -32,4 +33,13 @@ internal sealed class ReviewRepository : BaseRepository<Review>, IReviewReposito
             .Where(r => r.PullRequestId == pullRequestId)
             .OrderByDescending(r => r.CreatedAt)
             .FirstOrDefaultAsync(cancellationToken);
+
+    public async Task<bool> HasActiveReviewAsync(
+        Guid pullRequestId,
+        CancellationToken cancellationToken = default)
+        => await DbSet
+            .AsNoTracking()
+            .AnyAsync(r => r.PullRequestId == pullRequestId
+                && (r.Status == ReviewStatus.Pending || r.Status == ReviewStatus.Processing),
+                cancellationToken);
 }
