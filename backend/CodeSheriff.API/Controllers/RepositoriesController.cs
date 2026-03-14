@@ -82,7 +82,9 @@ public sealed class RepositoriesController : ControllerBase
             request.Owner,
             request.Name,
             request.FullName,
-            request.InstallationId);
+            request.InstallationId,
+            request.GitProvider,
+            request.AccessToken);
 
         var result = await _sender.Send(command, cancellationToken);
 
@@ -98,4 +100,6 @@ public sealed record RegisterRepositoryRequest(
     string Owner,
     string Name,
     string FullName,
-    long InstallationId);
+    long InstallationId,
+    string GitProvider = "github",
+    string AccessToken = "");

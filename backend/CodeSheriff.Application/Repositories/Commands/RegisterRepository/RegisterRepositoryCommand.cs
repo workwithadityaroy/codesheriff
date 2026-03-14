@@ -8,5 +8,7 @@ public sealed record RegisterRepositoryCommand(
     string Owner,
     string Name,
     string FullName,
-    long InstallationId
+    long InstallationId,
+    string GitProvider = "github",
+    string AccessToken = ""
 ) : IRequest<Result<Guid>>;

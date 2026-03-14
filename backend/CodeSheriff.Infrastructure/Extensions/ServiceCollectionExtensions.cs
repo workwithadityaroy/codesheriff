@@ -6,7 +6,9 @@ using CodeSheriff.Infrastructure.Services;
 using CodeSheriff.Infrastructure.Services.AI;
 using CodeSheriff.Infrastructure.Services.AI.Providers;
 using CodeSheriff.Infrastructure.Services.Email;
+using CodeSheriff.Infrastructure.Services.Git;
 using CodeSheriff.Infrastructure.Services.GitHub;
+using CodeSheriff.Infrastructure.Services.GitLab;
 using CodeSheriff.Infrastructure.Services.Queue;
 using CodeSheriff.Infrastructure.Workers;
 using Microsoft.EntityFrameworkCore;
@@ -47,6 +49,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IGitHubService, GitHubService>();
         services.Configure<GitHubOptions>(configuration.GetSection(GitHubOptions.SectionName));
         services.Configure<ClerkOptions>(configuration.GetSection(ClerkOptions.SectionName));
+        services.Configure<GitLabOptions>(configuration.GetSection(GitLabOptions.SectionName));
 
         // Redis queue
         var redisConn = configuration.GetConnectionString("Redis") ?? "localhost:6379";
@@ -70,6 +73,16 @@ public static class ServiceCollectionExtensions
         {
             c.BaseAddress = new Uri("https://api.openai.com");
         });
+        services.AddHttpClient("gitlab", c =>
+        {
+            c.BaseAddress = new Uri("https://gitlab.com/");
+            c.DefaultRequestHeaders.Add("User-Agent", "CodeSheriff/1.0");
+        });
+
+        // Git provider abstraction
+        services.AddScoped<IGitProvider, GitHubProvider>();
+        services.AddScoped<IGitProvider, GitLabProvider>();
+        services.AddScoped<IGitProviderFactory, GitProviderFactory>();
 
         // AI review — provider abstraction
         services.Configure<AnthropicOptions>(configuration.GetSection(AnthropicOptions.SectionName));

@@ -18,7 +18,8 @@ public sealed class AnalyzePullRequestCommandHandlerTests
     private readonly Mock<IPullRequestRepository> _pullRequestRepo = new();
     private readonly Mock<IRepositoryRepository> _repositoryRepo = new();
     private readonly Mock<IReviewRepository> _reviewRepo = new();
-    private readonly Mock<IGitHubService> _gitHubService = new();
+    private readonly Mock<IGitProviderFactory> _gitProviderFactory = new();
+    private readonly Mock<IGitProvider> _gitProvider = new();
     private readonly Mock<IAiReviewService> _aiReviewService = new();
 
     private readonly AnalyzePullRequestCommandHandler _handler;
@@ -33,9 +34,14 @@ public sealed class AnalyzePullRequestCommandHandlerTests
         _unitOfWork.SetupGet(u => u.Reviews).Returns(_reviewRepo.Object);
         _unitOfWork.Setup(u => u.SaveChangesAsync(default)).ReturnsAsync(1);
 
+        _gitProvider.SetupGet(p => p.ProviderType).Returns(GitProvider.GitHub);
+        _gitProviderFactory
+            .Setup(f => f.GetProvider(It.IsAny<GitProvider>()))
+            .Returns(_gitProvider.Object);
+
         _handler = new AnalyzePullRequestCommandHandler(
             _unitOfWork.Object,
-            _gitHubService.Object,
+            _gitProviderFactory.Object,
             _aiReviewService.Object,
             NullLogger<AnalyzePullRequestCommandHandler>.Instance);
     }
@@ -61,7 +67,7 @@ public sealed class AnalyzePullRequestCommandHandlerTests
     }
 
     [Fact]
-    public async Task Handle_GitHubDiffFails_ReviewAndPrMarkedFailed()
+    public async Task Handle_GitDiffFails_ReviewAndPrMarkedFailed()
     {
         var pr = MakePullRequest();
         var repo = MakeRepository();
@@ -70,9 +76,9 @@ public sealed class AnalyzePullRequestCommandHandlerTests
         _repositoryRepo.Setup(r => r.GetByIdAsync(pr.RepositoryId, default)).ReturnsAsync(repo);
         _reviewRepo.Setup(r => r.AddAsync(It.IsAny<Review>(), default)).Returns(Task.CompletedTask);
 
-        _gitHubService
-            .Setup(s => s.GetPullRequestDiffAsync(99L, "owner", "repo", 42, default))
-            .ReturnsAsync(Result.Failure<string>("GitHub error"));
+        _gitProvider
+            .Setup(p => p.GetPullRequestDiffAsync(repo, 42, default))
+            .ReturnsAsync(Result.Failure<string>("Diff error"));
 
         var command = new AnalyzePullRequestCommand(PrId, 99L, "owner", "repo", 42);
         var result = await _handler.Handle(command, default);
@@ -91,8 +97,8 @@ public sealed class AnalyzePullRequestCommandHandlerTests
         _repositoryRepo.Setup(r => r.GetByIdAsync(pr.RepositoryId, default)).ReturnsAsync(repo);
         _reviewRepo.Setup(r => r.AddAsync(It.IsAny<Review>(), default)).Returns(Task.CompletedTask);
 
-        _gitHubService
-            .Setup(s => s.GetPullRequestDiffAsync(99L, "owner", "repo", 42, default))
+        _gitProvider
+            .Setup(p => p.GetPullRequestDiffAsync(repo, 42, default))
             .ReturnsAsync(Result.Success("diff content"));
 
         _aiReviewService
@@ -121,8 +127,8 @@ public sealed class AnalyzePullRequestCommandHandlerTests
         _pullRequestRepo.Setup(r => r.GetByIdAsync(PrId, default)).ReturnsAsync(pr);
         _repositoryRepo.Setup(r => r.GetByIdAsync(pr.RepositoryId, default)).ReturnsAsync(repo);
 
-        _gitHubService
-            .Setup(s => s.GetPullRequestDiffAsync(99L, "owner", "repo", 42, default))
+        _gitProvider
+            .Setup(p => p.GetPullRequestDiffAsync(repo, 42, default))
             .ReturnsAsync(Result.Success("diff content"));
 
         _aiReviewService
@@ -158,8 +164,8 @@ public sealed class AnalyzePullRequestCommandHandlerTests
         _pullRequestRepo.Setup(r => r.GetByIdAsync(PrId, default)).ReturnsAsync(pr);
         _repositoryRepo.Setup(r => r.GetByIdAsync(pr.RepositoryId, default)).ReturnsAsync(repo);
 
-        _gitHubService
-            .Setup(s => s.GetPullRequestDiffAsync(99L, "owner", "repo", 42, default))
+        _gitProvider
+            .Setup(p => p.GetPullRequestDiffAsync(repo, 42, default))
             .ReturnsAsync(Result.Success("diff content"));
 
         _aiReviewService
@@ -183,8 +189,8 @@ public sealed class AnalyzePullRequestCommandHandlerTests
         _pullRequestRepo.Setup(r => r.GetByIdAsync(PrId, default)).ReturnsAsync(pr);
         _repositoryRepo.Setup(r => r.GetByIdAsync(pr.RepositoryId, default)).ReturnsAsync(repo);
 
-        _gitHubService
-            .Setup(s => s.GetPullRequestDiffAsync(99L, "owner", "repo", 42, default))
+        _gitProvider
+            .Setup(p => p.GetPullRequestDiffAsync(repo, 42, default))
             .ReturnsAsync(Result.Success("diff content"));
 
         _aiReviewService

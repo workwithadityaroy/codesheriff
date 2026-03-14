@@ -11,18 +11,18 @@ internal sealed class AnalyzePullRequestCommandHandler
     : IRequestHandler<AnalyzePullRequestCommand, Result<Guid>>
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IGitHubService _gitHubService;
+    private readonly IGitProviderFactory _gitProviderFactory;
     private readonly IAiReviewService _aiReviewService;
     private readonly ILogger<AnalyzePullRequestCommandHandler> _logger;
 
     public AnalyzePullRequestCommandHandler(
         IUnitOfWork unitOfWork,
-        IGitHubService gitHubService,
+        IGitProviderFactory gitProviderFactory,
         IAiReviewService aiReviewService,
         ILogger<AnalyzePullRequestCommandHandler> logger)
     {
         _unitOfWork = unitOfWork;
-        _gitHubService = gitHubService;
+        _gitProviderFactory = gitProviderFactory;
         _aiReviewService = aiReviewService;
         _logger = logger;
     }
@@ -53,16 +53,16 @@ internal sealed class AnalyzePullRequestCommandHandler
         var startedAt = DateTimeOffset.UtcNow;
 
         _logger.LogInformation(
-            "Starting review for PR #{PrNumber} in {RepoFullName}",
-            request.GitHubPrNumber, repository.FullName);
+            "Starting review for PR #{PrNumber} in {RepoFullName} via {Provider}",
+            request.GitHubPrNumber, repository.FullName, repository.Provider);
 
-        var diffResult = await _gitHubService.GetPullRequestDiffAsync(
-            request.InstallationId, request.Owner, request.RepoName,
-            request.GitHubPrNumber, cancellationToken);
+        var gitProvider = _gitProviderFactory.GetProvider(repository.Provider);
+        var diffResult = await gitProvider.GetPullRequestDiffAsync(
+            repository, request.GitHubPrNumber, cancellationToken);
 
         if (!diffResult.IsSuccess)
         {
-            _logger.LogWarning("GitHub diff fetch failed: {Error}", diffResult.Error);
+            _logger.LogWarning("Diff fetch failed: {Error}", diffResult.Error);
             review.MarkAsFailed();
             pullRequest.MarkAsFailed();
             await _unitOfWork.SaveChangesAsync(cancellationToken);
